@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
 import { Board } from './components/Board'
+import { HelpModal } from './components/HelpModal'
 import { COLOR_HEX } from './colors'
 import { DEFAULT_MINE_PERCENTAGE, DEFAULT_RADIUS, MAX_RADIUS, MIN_RADIUS, MINE_PERCENTAGE_OPTIONS } from './constants'
 import { adjacentCells, canChord, cellCount, chordReveal, cycleMark, newGame, PRIMARIES, reveal, setMark } from './game'
@@ -20,6 +21,7 @@ export default function App() {
   )
   const [highlightedKeys, setHighlightedKeys] = useState<Set<string>>(() => new Set())
   const [markMode, setMarkMode] = useState<Primary | null>(null)
+  const [helpOpen, setHelpOpen] = useState(false)
   const mineCount = minesFor(radius, minePercentage)
 
   useEffect(() => {
@@ -97,6 +99,9 @@ export default function App() {
   return (
     <div className="app">
       <header>
+        <button className="help-button" aria-label="How to play" onClick={() => setHelpOpen(true)}>
+          ?
+        </button>
         <h1>ColorSweeper</h1>
         <p className="hint">Left click reveals. Right click cycles a color mark. Press 1/2/3 to mark with left click, space to reveal — win by revealing every safe cell and marking every mine with its true color.</p>
       </header>
@@ -159,6 +164,8 @@ export default function App() {
           </div>
         )}
       </div>
+
+      {helpOpen && <HelpModal onClose={() => setHelpOpen(false)} />}
     </div>
   )
 }
