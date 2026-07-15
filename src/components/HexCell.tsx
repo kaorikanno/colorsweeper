@@ -15,7 +15,7 @@ interface HexCellProps {
 
 export function HexCell({ cell, status, overlay, x, y, size, onReveal, onMark }: HexCellProps) {
   const points = hexPoints(x, y, size * 0.94)
-  const showMineOnWin = status === 'won' && cell.isMine
+  const showMineAtGameEnd = status !== 'playing' && cell.isMine
 
   const handleContextMenu = (e: React.MouseEvent) => {
     e.preventDefault()
@@ -40,9 +40,9 @@ export function HexCell({ cell, status, overlay, x, y, size, onReveal, onMark }:
     )
   }
 
-  if (showMineOnWin) {
+  if (showMineAtGameEnd) {
     return (
-      <g className="cell won-mine">
+      <g className="cell revealed-mine">
         <polygon points={points} fill={COLOR_HEX[cell.mineColor!]} />
         <polygon points={hexPoints(x, y, size * 0.62)} fill="none" stroke="rgba(255,255,255,0.85)" strokeWidth={2} />
       </g>
