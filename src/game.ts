@@ -26,13 +26,20 @@ function shuffle<T>(arr: T[]): T[] {
 /**
  * Randomized greedy placement with restarts: a mine may only be placed where
  * none of its neighbors would exceed MAX_ADJACENT_MINES adjacent mines.
+ * Excluded keys never receive a mine.
  */
-function placeMines(keys: string[], neighborsOf: Map<string, string[]>, count: number): Set<string> {
+function placeMines(
+  keys: string[],
+  neighborsOf: Map<string, string[]>,
+  count: number,
+  excluded: ReadonlySet<string>,
+): Set<string> {
   for (let attempt = 0; attempt < 500; attempt++) {
     const adjacent = new Map<string, number>()
     const mines = new Set<string>()
     for (const k of shuffle([...keys])) {
       if (mines.size === count) break
+      if (excluded.has(k)) continue
       const neighbors = neighborsOf.get(k)!
       if (neighbors.every((n) => (adjacent.get(n) ?? 0) < MAX_ADJACENT_MINES)) {
         mines.add(k)
@@ -44,33 +51,40 @@ function placeMines(keys: string[], neighborsOf: Map<string, string[]>, count: n
   throw new Error(`Could not place ${count} mines within the adjacency constraint`)
 }
 
+/** Board starts with no mines; they are placed on the first reveal. */
 export function newGame(radius: number, mineCount: number): GameState {
-  const coords = hexagonCoords(radius)
-  const keys = coords.map(([q, r]) => keyOf(q, r))
-  const exists = new Set(keys)
-  const neighborsOf = new Map<string, string[]>()
-  for (const [q, r] of coords) {
-    neighborsOf.set(
-      keyOf(q, r),
-      NEIGHBOR_OFFSETS.map(([dq, dr]) => keyOf(q + dq, r + dr)).filter((k) => exists.has(k)),
+  const board: Board = new Map()
+  for (const [q, r] of hexagonCoords(radius)) {
+    board.set(keyOf(q, r), { q, r, isMine: false, mineColor: null, revealed: false, mark: null })
+  }
+  return { board, status: 'playing', mineCount, minesPlaced: false }
+}
+
+function neighborKeys(board: Board, key: string): string[] {
+  const cell = board.get(key)!
+  return NEIGHBOR_OFFSETS.map(([dq, dr]) => keyOf(cell.q + dq, cell.r + dr)).filter((k) => board.has(k))
+}
+
+/**
+ * Places mines everywhere except the first-clicked cell and its neighbors,
+ * so the first reveal is always a white, zero-adjacent cell.
+ */
+function withMinesPlaced(state: GameState, safeKey: string): GameState {
+  const keys = [...state.board.keys()]
+  const neighborsOf = new Map(keys.map((k) => [k, neighborKeys(state.board, k)]))
+  const excluded = new Set([safeKey, ...neighborsOf.get(safeKey)!])
+  const mines = placeMines(keys, neighborsOf, state.mineCount, excluded)
+
+  const board: Board = new Map()
+  for (const [k, cell] of state.board) {
+    board.set(
+      k,
+      mines.has(k)
+        ? { ...cell, isMine: true, mineColor: PRIMARIES[Math.floor(Math.random() * PRIMARIES.length)] }
+        : cell,
     )
   }
-
-  const mines = placeMines(keys, neighborsOf, mineCount)
-  const board: Board = new Map()
-  for (const [q, r] of coords) {
-    const k = keyOf(q, r)
-    const isMine = mines.has(k)
-    board.set(k, {
-      q,
-      r,
-      isMine,
-      mineColor: isMine ? PRIMARIES[Math.floor(Math.random() * PRIMARIES.length)] : null,
-      revealed: false,
-      mark: null,
-    })
-  }
-  return { board, status: 'playing' }
+  return { ...state, board, minesPlaced: true }
 }
 
 export function adjacentMineColors(board: Board, cell: Cell): Primary[] {
@@ -114,13 +128,16 @@ export function checkWin(board: Board): boolean {
 }
 
 export function reveal(state: GameState, key: string): GameState {
-  const cell = state.board.get(key)
-  if (state.status !== 'playing' || !cell || cell.revealed || cell.mark) return state
+  const target = state.board.get(key)
+  if (state.status !== 'playing' || !target || target.revealed || target.mark) return state
+
+  if (!state.minesPlaced) state = withMinesPlaced(state, key)
 
   const board = new Map(state.board)
+  const cell = board.get(key)!
   if (cell.isMine) {
     board.set(key, { ...cell, revealed: true })
-    return { board, status: 'lost' }
+    return { ...state, board, status: 'lost' }
   }
 
   const stack = [key]
@@ -139,7 +156,7 @@ export function reveal(state: GameState, key: string): GameState {
       }
     }
   }
-  return { board, status: checkWin(board) ? 'won' : 'playing' }
+  return { ...state, board, status: checkWin(board) ? 'won' : 'playing' }
 }
 
 const MARK_ORDER: ReadonlyArray<Primary | null> = [null, 'red', 'yellow', 'blue']
@@ -151,5 +168,6 @@ export function cycleMark(state: GameState, key: string): GameState {
   const next = MARK_ORDER[(MARK_ORDER.indexOf(cell.mark) + 1) % MARK_ORDER.length]
   const board = new Map(state.board)
   board.set(key, { ...cell, mark: next })
-  return { board, status: checkWin(board) ? 'won' : 'playing' }
+  const won = state.minesPlaced && checkWin(board)
+  return { ...state, board, status: won ? 'won' : 'playing' }
 }

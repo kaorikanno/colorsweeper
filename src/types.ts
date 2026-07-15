@@ -17,6 +17,9 @@ export type GameStatus = 'playing' | 'won' | 'lost'
 export interface GameState {
   board: Board
   status: GameStatus
+  mineCount: number
+  /** Mines are placed lazily on the first reveal so it always hits a white cell. */
+  minesPlaced: boolean
 }
 
 /** Fill overlay of a revealed safe cell, derived from its adjacent mines. */

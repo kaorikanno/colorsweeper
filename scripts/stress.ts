@@ -1,4 +1,4 @@
-import { adjacentMineColors, deriveOverlay, maxMines, newGame } from '../src/game'
+import { adjacentMineColors, deriveOverlay, maxMines, newGame, reveal } from '../src/game'
 import type { Primary } from '../src/types'
 
 let failures = 0
@@ -7,7 +7,17 @@ for (let radius = 3; radius <= 8; radius++) {
   const mines = maxMines(radius)
   const start = performance.now()
   for (let i = 0; i < 200; i++) {
-    const { board } = newGame(radius, mines)
+    const game = newGame(radius, mines)
+    const keys = [...game.board.keys()]
+    const firstKey = keys[Math.floor(Math.random() * keys.length)]
+    const { board } = reveal(game, firstKey)
+
+    const first = board.get(firstKey)!
+    if (first.isMine || !first.revealed || adjacentMineColors(board, first).length !== 0) {
+      console.error(`FIRST CLICK NOT WHITE r=${radius} key=${firstKey}`)
+      failures++
+    }
+
     let mineTotal = 0
     for (const cell of board.values()) {
       if (cell.isMine) mineTotal++
@@ -23,7 +33,7 @@ for (let radius = 3; radius <= 8; radius++) {
     }
   }
   const ms = (performance.now() - start) / 200
-  console.log(`radius ${radius}: 200 boards at max ${mines} mines, avg ${ms.toFixed(2)}ms/board`)
+  console.log(`radius ${radius}: 200 first-click boards at max ${mines} mines, avg ${ms.toFixed(2)}ms/board`)
 }
 
 const cases: Array<[Primary[], string, number]> = [
