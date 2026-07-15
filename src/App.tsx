@@ -1,49 +1,36 @@
 import { useState } from 'react'
 import { Board } from './components/Board'
 import { COLOR_HEX } from './colors'
-import { MAX_RADIUS, MIN_RADIUS } from './constants'
-import { cycleMark, maxMines, newGame, PRIMARIES, reveal } from './game'
+import { DEFAULT_MINE_PERCENTAGE, DEFAULT_RADIUS, MAX_RADIUS, MIN_RADIUS, MINE_PERCENTAGE_OPTIONS } from './constants'
+import { cellCount, cycleMark, newGame, PRIMARIES, reveal } from './game'
 import type { GameState, Primary } from './types'
 
 const RADII = Array.from({ length: MAX_RADIUS - MIN_RADIUS + 1 }, (_, i) => MIN_RADIUS + i)
-const DEFAULT_RADIUS = 4
-const DEFAULT_MINES = 12
+
+function minesFor(radius: number, minePercentage: number): number {
+  return Math.floor((cellCount(radius) * minePercentage) / 100)
+}
 
 export default function App() {
   const [radius, setRadius] = useState(DEFAULT_RADIUS)
-  const [mineCount, setMineCount] = useState(DEFAULT_MINES)
-  const [mineInput, setMineInput] = useState(String(DEFAULT_MINES))
-  const [game, setGame] = useState<GameState>(() => newGame(DEFAULT_RADIUS, DEFAULT_MINES))
+  const [minePercentage, setMinePercentage] = useState(DEFAULT_MINE_PERCENTAGE)
+  const [game, setGame] = useState<GameState>(() =>
+    newGame(DEFAULT_RADIUS, minesFor(DEFAULT_RADIUS, DEFAULT_MINE_PERCENTAGE)),
+  )
+  const mineCount = minesFor(radius, minePercentage)
 
-  const restart = (r: number, mines: number) => {
-    setGame(newGame(r, mines))
+  const restart = (r: number, percentage: number) => {
+    setGame(newGame(r, minesFor(r, percentage)))
   }
 
   const handleRadiusChange = (r: number) => {
-    const clamped = Math.min(mineCount, maxMines(r))
     setRadius(r)
-    setMineCount(clamped)
-    setMineInput(String(clamped))
-    restart(r, clamped)
+    restart(r, minePercentage)
   }
 
-  const handleMineInput = (value: string) => {
-    setMineInput(value)
-    const n = Number.parseInt(value, 10)
-    if (Number.isInteger(n) && n >= 1 && n <= maxMines(radius) && n !== mineCount) {
-      setMineCount(n)
-      restart(radius, n)
-    }
-  }
-
-  const handleMineBlur = () => {
-    const n = Number.parseInt(mineInput, 10)
-    const clamped = Number.isInteger(n) ? Math.min(Math.max(n, 1), maxMines(radius)) : mineCount
-    setMineInput(String(clamped))
-    if (clamped !== mineCount) {
-      setMineCount(clamped)
-      restart(radius, clamped)
-    }
+  const handleMinePercentageChange = (percentage: number) => {
+    setMinePercentage(percentage)
+    restart(radius, percentage)
   }
 
   const marksByColor = new Map<Primary, number>(PRIMARIES.map((c) => [c, 0]))
@@ -75,17 +62,19 @@ export default function App() {
         </label>
         <label>
           Mines
-          <input
-            type="number"
-            min={1}
-            max={maxMines(radius)}
-            value={mineInput}
-            onChange={(e) => handleMineInput(e.target.value)}
-            onBlur={handleMineBlur}
-          />
-          <span className="max-note">max {maxMines(radius)}</span>
+          <select
+            value={minePercentage}
+            onChange={(e) => handleMinePercentageChange(Number(e.target.value))}
+          >
+            {MINE_PERCENTAGE_OPTIONS.map((p) => (
+              <option key={p} value={p}>
+                {p}%
+              </option>
+            ))}
+          </select>
+          <span className="max-note">{mineCount} mines</span>
         </label>
-        <button onClick={() => restart(radius, mineCount)}>New game</button>
+        <button onClick={() => restart(radius, minePercentage)}>New game</button>
       </div>
 
       <div className="hud">
@@ -110,7 +99,7 @@ export default function App() {
         {game.status !== 'playing' && (
           <div className={`banner ${game.status}`}>
             <strong>{game.status === 'won' ? 'You won!' : 'Boom — that was a mine.'}</strong>
-            <button onClick={() => restart(radius, mineCount)}>Play again</button>
+            <button onClick={() => restart(radius, minePercentage)}>Play again</button>
           </div>
         )}
       </div>
