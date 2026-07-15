@@ -204,3 +204,15 @@ export function cycleMark(state: GameState, key: string): GameState {
   const won = state.minesPlaced && checkWin(board)
   return { ...state, board, status: won ? 'won' : 'playing' }
 }
+
+/** Sets a cell's mark to `color`, or clears it if it already has that color. */
+export function setMark(state: GameState, key: string, color: Primary): GameState {
+  const cell = state.board.get(key)
+  if (state.status !== 'playing' || !cell || cell.revealed) return state
+
+  const next = cell.mark === color ? null : color
+  const board = new Map(state.board)
+  board.set(key, { ...cell, mark: next })
+  const won = state.minesPlaced && checkWin(board)
+  return { ...state, board, status: won ? 'won' : 'playing' }
+}

@@ -1,8 +1,8 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { Board } from './components/Board'
 import { COLOR_HEX } from './colors'
 import { DEFAULT_MINE_PERCENTAGE, DEFAULT_RADIUS, MAX_RADIUS, MIN_RADIUS, MINE_PERCENTAGE_OPTIONS } from './constants'
-import { adjacentCells, canChord, cellCount, chordReveal, cycleMark, newGame, PRIMARIES, reveal } from './game'
+import { adjacentCells, canChord, cellCount, chordReveal, cycleMark, newGame, PRIMARIES, reveal, setMark } from './game'
 import { keyOf } from './hex'
 import type { GameState, Primary } from './types'
 
@@ -19,7 +19,22 @@ export default function App() {
     newGame(DEFAULT_RADIUS, minesFor(DEFAULT_RADIUS, DEFAULT_MINE_PERCENTAGE)),
   )
   const [highlightedKeys, setHighlightedKeys] = useState<Set<string>>(() => new Set())
+  const [markMode, setMarkMode] = useState<Primary | null>(null)
   const mineCount = minesFor(radius, minePercentage)
+
+  useEffect(() => {
+    const onKeyDown = (e: KeyboardEvent) => {
+      if (e.key === '1') setMarkMode(PRIMARIES[0])
+      else if (e.key === '2') setMarkMode(PRIMARIES[1])
+      else if (e.key === '3') setMarkMode(PRIMARIES[2])
+      else if (e.key === ' ') {
+        e.preventDefault()
+        setMarkMode(null)
+      }
+    }
+    window.addEventListener('keydown', onKeyDown)
+    return () => window.removeEventListener('keydown', onKeyDown)
+  }, [])
 
   const restart = (r: number, percentage: number) => {
     setHighlightedKeys(new Set())
@@ -28,7 +43,11 @@ export default function App() {
 
   const handleReveal = (key: string) => {
     setHighlightedKeys(new Set())
-    setGame((g) => reveal(g, key))
+    if (markMode) {
+      setGame((g) => setMark(g, key, markMode))
+    } else {
+      setGame((g) => reveal(g, key))
+    }
   }
 
   const handleMark = (key: string) => {
@@ -79,7 +98,7 @@ export default function App() {
     <div className="app">
       <header>
         <h1>ColorSweeper</h1>
-        <p className="hint">Left click reveals. Right click cycles a color mark — win by revealing every safe cell and marking every mine with its true color.</p>
+        <p className="hint">Left click reveals. Right click cycles a color mark. Press 1/2/3 to mark with left click, space to reveal — win by revealing every safe cell and marking every mine with its true color.</p>
       </header>
 
       <div className="controls">
@@ -115,7 +134,7 @@ export default function App() {
           Marked {totalMarks} / {mineCount}
         </span>
         {PRIMARIES.map((color) => (
-          <span key={color} className="hud-color">
+          <span key={color} className={`hud-color${markMode === color ? ' active' : ''}`}>
             <span className="swatch" style={{ background: COLOR_HEX[color] }} />
             {marksByColor.get(color)}
           </span>
