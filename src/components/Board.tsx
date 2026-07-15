@@ -9,11 +9,12 @@ const SQRT3 = Math.sqrt(3)
 interface BoardProps {
   game: GameState
   radius: number
+  highlightedKeys: Set<string>
   onReveal: (key: string) => void
-  onMark: (key: string) => void
+  onSecondaryClick: (key: string) => void
 }
 
-export function Board({ game, radius, onReveal, onMark }: BoardProps) {
+export function Board({ game, radius, highlightedKeys, onReveal, onSecondaryClick }: BoardProps) {
   const margin = HEX_SIZE
   const halfWidth = SQRT3 * HEX_SIZE * (radius + 0.5) + margin
   const halfHeight = 1.5 * HEX_SIZE * radius + HEX_SIZE + margin
@@ -37,11 +38,12 @@ export function Board({ game, radius, onReveal, onMark }: BoardProps) {
             cell={cell}
             status={game.status}
             overlay={overlay}
+            highlighted={highlightedKeys.has(key)}
             x={x}
             y={y}
             size={HEX_SIZE}
             onReveal={() => onReveal(key)}
-            onMark={() => onMark(key)}
+            onSecondaryClick={() => onSecondaryClick(key)}
           />
         )
       })}

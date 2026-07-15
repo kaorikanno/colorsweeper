@@ -2,7 +2,8 @@ import { useState } from 'react'
 import { Board } from './components/Board'
 import { COLOR_HEX } from './colors'
 import { DEFAULT_MINE_PERCENTAGE, DEFAULT_RADIUS, MAX_RADIUS, MIN_RADIUS, MINE_PERCENTAGE_OPTIONS } from './constants'
-import { cellCount, cycleMark, newGame, PRIMARIES, reveal } from './game'
+import { adjacentCells, canChord, cellCount, chordReveal, cycleMark, newGame, PRIMARIES, reveal } from './game'
+import { keyOf } from './hex'
 import type { GameState, Primary } from './types'
 
 const RADII = Array.from({ length: MAX_RADIUS - MIN_RADIUS + 1 }, (_, i) => MIN_RADIUS + i)
@@ -17,10 +18,39 @@ export default function App() {
   const [game, setGame] = useState<GameState>(() =>
     newGame(DEFAULT_RADIUS, minesFor(DEFAULT_RADIUS, DEFAULT_MINE_PERCENTAGE)),
   )
+  const [highlightedKeys, setHighlightedKeys] = useState<Set<string>>(() => new Set())
   const mineCount = minesFor(radius, minePercentage)
 
   const restart = (r: number, percentage: number) => {
+    setHighlightedKeys(new Set())
     setGame(newGame(r, minesFor(r, percentage)))
+  }
+
+  const handleReveal = (key: string) => {
+    setHighlightedKeys(new Set())
+    setGame((g) => reveal(g, key))
+  }
+
+  const handleSecondaryClick = (key: string) => {
+    setHighlightedKeys(new Set())
+    if (game.status !== 'playing') return
+
+    const cell = game.board.get(key)
+    if (!cell) return
+
+    if (cell.revealed && !cell.isMine) {
+      if (canChord(game.board, cell)) {
+        setGame((g) => chordReveal(g, key))
+      } else {
+        const covered = adjacentCells(game.board, cell)
+          .filter((n) => !n.revealed && !n.mark)
+          .map((n) => keyOf(n.q, n.r))
+        setHighlightedKeys(new Set(covered))
+      }
+      return
+    }
+
+    setGame((g) => cycleMark(g, key))
   }
 
   const handleRadiusChange = (r: number) => {
@@ -93,8 +123,9 @@ export default function App() {
         <Board
           game={game}
           radius={radius}
-          onReveal={(key) => setGame((g) => reveal(g, key))}
-          onMark={(key) => setGame((g) => cycleMark(g, key))}
+          highlightedKeys={highlightedKeys}
+          onReveal={handleReveal}
+          onSecondaryClick={handleSecondaryClick}
         />
         {game.status !== 'playing' && (
           <div className={`banner ${game.status}`}>

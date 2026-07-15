@@ -154,6 +154,13 @@ button:hover {
   fill: var(--cell-revealed);
 }
 
+.highlight-ring {
+  fill: none;
+  stroke: var(--accent);
+  stroke-width: 2.5;
+  stroke-dasharray: 4 3;
+}
+
 .banner {
   position: absolute;
   top: 10px;

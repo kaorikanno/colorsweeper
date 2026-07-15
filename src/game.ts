@@ -93,6 +93,21 @@ export function adjacentMineColors(board: Board, cell: Cell): Primary[] {
   return colors
 }
 
+export function adjacentCells(board: Board, cell: Cell): Cell[] {
+  const cells: Cell[] = []
+  for (const [dq, dr] of NEIGHBOR_OFFSETS) {
+    const n = board.get(keyOf(cell.q + dq, cell.r + dr))
+    if (n) cells.push(n)
+  }
+  return cells
+}
+
+export function canChord(board: Board, cell: Cell): boolean {
+  return adjacentCells(board, cell)
+    .filter((n) => n.isMine)
+    .every((n) => n.mark !== null)
+}
+
 const SECONDARY: Record<string, MixColor> = {
   'red,yellow': 'orange',
   'blue,red': 'purple',
@@ -154,6 +169,21 @@ export function reveal(state: GameState, key: string): GameState {
     }
   }
   return { ...state, board, status: checkWin(board) ? 'won' : 'playing' }
+}
+
+/**
+ * Reveals every neighbor of an already-revealed safe cell, but only when all of
+ * its adjacent mines are marked. Safe by construction: with every adjacent mine
+ * marked, each unmarked neighbor is guaranteed not to be a mine.
+ */
+export function chordReveal(state: GameState, cellKey: string): GameState {
+  const cell = state.board.get(cellKey)
+  if (state.status !== 'playing' || !cell || !cell.revealed || cell.isMine) return state
+  if (!canChord(state.board, cell)) return state
+
+  let next = state
+  for (const n of adjacentCells(state.board, cell)) next = reveal(next, keyOf(n.q, n.r))
+  return next
 }
 
 const MARK_ORDER: ReadonlyArray<Primary | null> = [null, 'red', 'yellow', 'blue']

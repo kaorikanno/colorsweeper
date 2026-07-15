@@ -6,20 +6,21 @@ interface HexCellProps {
   cell: Cell
   status: GameStatus
   overlay: Overlay | null
+  highlighted: boolean
   x: number
   y: number
   size: number
   onReveal: () => void
-  onMark: () => void
+  onSecondaryClick: () => void
 }
 
-export function HexCell({ cell, status, overlay, x, y, size, onReveal, onMark }: HexCellProps) {
+export function HexCell({ cell, status, overlay, highlighted, x, y, size, onReveal, onSecondaryClick }: HexCellProps) {
   const points = hexPoints(x, y, size * 0.94)
   const showMineAtGameEnd = status !== 'playing' && cell.isMine
 
   const handleContextMenu = (e: React.MouseEvent) => {
     e.preventDefault()
-    onMark()
+    onSecondaryClick()
   }
 
   if (cell.revealed && cell.isMine) {
@@ -33,7 +34,7 @@ export function HexCell({ cell, status, overlay, x, y, size, onReveal, onMark }:
 
   if (cell.revealed) {
     return (
-      <g className="cell revealed">
+      <g className="cell revealed" onContextMenu={handleContextMenu}>
         <polygon points={points} className="revealed-base" />
         {overlay && <polygon points={points} fill={COLOR_HEX[overlay.color]} fillOpacity={overlay.opacity} />}
       </g>
@@ -56,6 +57,7 @@ export function HexCell({ cell, status, overlay, x, y, size, onReveal, onMark }:
       onContextMenu={handleContextMenu}
     >
       <polygon points={points} className="covered-base" />
+      {highlighted && <polygon points={hexPoints(x, y, size * 0.72)} className="highlight-ring" />}
       {cell.mark && (
         <circle cx={x} cy={y} r={size * 0.32} fill={COLOR_HEX[cell.mark]} stroke="rgba(0,0,0,0.4)" strokeWidth={1.5} />
       )}
