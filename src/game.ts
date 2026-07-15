@@ -1,11 +1,8 @@
+import { MAX_ADJACENT_MINES } from './constants'
 import { hexagonCoords, keyOf, NEIGHBOR_OFFSETS } from './hex'
 import type { Board, Cell, GameState, MixColor, Overlay, Primary } from './types'
 
 export const PRIMARIES: readonly Primary[] = ['red', 'yellow', 'blue']
-
-export const MIN_RADIUS = 3
-export const MAX_RADIUS = 8
-export const MAX_ADJACENT_MINES = 3
 
 export function cellCount(radius: number): number {
   return 3 * radius * radius + 3 * radius + 1

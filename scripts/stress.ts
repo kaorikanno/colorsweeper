@@ -1,9 +1,10 @@
+import { MAX_RADIUS, MIN_RADIUS } from '../src/constants'
 import { adjacentMineColors, deriveOverlay, maxMines, newGame, reveal } from '../src/game'
 import type { Primary } from '../src/types'
 
 let failures = 0
 
-for (let radius = 3; radius <= 8; radius++) {
+for (let radius = MIN_RADIUS; radius <= MAX_RADIUS; radius++) {
   const mines = maxMines(radius)
   const start = performance.now()
   for (let i = 0; i < 200; i++) {

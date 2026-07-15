@@ -1,7 +1,8 @@
 import { useState } from 'react'
 import { Board } from './components/Board'
 import { COLOR_HEX } from './colors'
-import { cycleMark, MAX_RADIUS, maxMines, MIN_RADIUS, newGame, PRIMARIES, reveal } from './game'
+import { MAX_RADIUS, MIN_RADIUS } from './constants'
+import { cycleMark, maxMines, newGame, PRIMARIES, reveal } from './game'
 import type { GameState, Primary } from './types'
 
 const RADII = Array.from({ length: MAX_RADIUS - MIN_RADIUS + 1 }, (_, i) => MIN_RADIUS + i)
