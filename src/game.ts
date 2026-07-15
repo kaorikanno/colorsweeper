@@ -1,0 +1,155 @@
+import { hexagonCoords, keyOf, NEIGHBOR_OFFSETS } from './hex'
+import type { Board, Cell, GameState, MixColor, Overlay, Primary } from './types'
+
+export const PRIMARIES: readonly Primary[] = ['red', 'yellow', 'blue']
+
+export const MIN_RADIUS = 3
+export const MAX_RADIUS = 8
+export const MAX_ADJACENT_MINES = 3
+
+export function cellCount(radius: number): number {
+  return 3 * radius * radius + 3 * radius + 1
+}
+
+export function maxMines(radius: number): number {
+  return Math.floor(cellCount(radius) / 3)
+}
+
+function shuffle<T>(arr: T[]): T[] {
+  for (let i = arr.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1))
+    ;[arr[i], arr[j]] = [arr[j], arr[i]]
+  }
+  return arr
+}
+
+/**
+ * Randomized greedy placement with restarts: a mine may only be placed where
+ * none of its neighbors would exceed MAX_ADJACENT_MINES adjacent mines.
+ */
+function placeMines(keys: string[], neighborsOf: Map<string, string[]>, count: number): Set<string> {
+  for (let attempt = 0; attempt < 500; attempt++) {
+    const adjacent = new Map<string, number>()
+    const mines = new Set<string>()
+    for (const k of shuffle([...keys])) {
+      if (mines.size === count) break
+      const neighbors = neighborsOf.get(k)!
+      if (neighbors.every((n) => (adjacent.get(n) ?? 0) < MAX_ADJACENT_MINES)) {
+        mines.add(k)
+        for (const n of neighbors) adjacent.set(n, (adjacent.get(n) ?? 0) + 1)
+      }
+    }
+    if (mines.size === count) return mines
+  }
+  throw new Error(`Could not place ${count} mines within the adjacency constraint`)
+}
+
+export function newGame(radius: number, mineCount: number): GameState {
+  const coords = hexagonCoords(radius)
+  const keys = coords.map(([q, r]) => keyOf(q, r))
+  const exists = new Set(keys)
+  const neighborsOf = new Map<string, string[]>()
+  for (const [q, r] of coords) {
+    neighborsOf.set(
+      keyOf(q, r),
+      NEIGHBOR_OFFSETS.map(([dq, dr]) => keyOf(q + dq, r + dr)).filter((k) => exists.has(k)),
+    )
+  }
+
+  const mines = placeMines(keys, neighborsOf, mineCount)
+  const board: Board = new Map()
+  for (const [q, r] of coords) {
+    const k = keyOf(q, r)
+    const isMine = mines.has(k)
+    board.set(k, {
+      q,
+      r,
+      isMine,
+      mineColor: isMine ? PRIMARIES[Math.floor(Math.random() * PRIMARIES.length)] : null,
+      revealed: false,
+      mark: null,
+    })
+  }
+  return { board, status: 'playing' }
+}
+
+export function adjacentMineColors(board: Board, cell: Cell): Primary[] {
+  const colors: Primary[] = []
+  for (const [dq, dr] of NEIGHBOR_OFFSETS) {
+    const n = board.get(keyOf(cell.q + dq, cell.r + dr))
+    if (n?.isMine && n.mineColor) colors.push(n.mineColor)
+  }
+  return colors
+}
+
+const SECONDARY: Record<string, MixColor> = {
+  'red,yellow': 'orange',
+  'blue,red': 'purple',
+  'blue,yellow': 'green',
+}
+
+const OPACITY_BY_COUNT = [0.33, 0.66, 1]
+
+/**
+ * Count drives opacity; the set of unique hues drives the color, so
+ * duplicates collapse (red+red+yellow renders the same as red+yellow+yellow).
+ */
+export function deriveOverlay(colors: Primary[]): Overlay | null {
+  if (colors.length === 0) return null
+  const unique = [...new Set(colors)].sort()
+  const color: MixColor =
+    unique.length === 1 ? unique[0] : unique.length === 3 ? 'brown' : SECONDARY[unique.join(',')]
+  return { color, opacity: OPACITY_BY_COUNT[colors.length - 1] }
+}
+
+export function checkWin(board: Board): boolean {
+  for (const cell of board.values()) {
+    if (cell.isMine) {
+      if (cell.mark !== cell.mineColor) return false
+    } else if (!cell.revealed) {
+      return false
+    }
+  }
+  return true
+}
+
+export function reveal(state: GameState, key: string): GameState {
+  const cell = state.board.get(key)
+  if (state.status !== 'playing' || !cell || cell.revealed || cell.mark) return state
+
+  const board = new Map(state.board)
+  if (cell.isMine) {
+    board.set(key, { ...cell, revealed: true })
+    return { board, status: 'lost' }
+  }
+
+  const stack = [key]
+  const seen = new Set<string>()
+  while (stack.length > 0) {
+    const k = stack.pop()!
+    if (seen.has(k)) continue
+    seen.add(k)
+    const c = board.get(k)!
+    if (c.revealed || c.isMine || c.mark) continue
+    board.set(k, { ...c, revealed: true })
+    if (adjacentMineColors(board, c).length === 0) {
+      for (const [dq, dr] of NEIGHBOR_OFFSETS) {
+        const nk = keyOf(c.q + dq, c.r + dr)
+        if (board.has(nk)) stack.push(nk)
+      }
+    }
+  }
+  return { board, status: checkWin(board) ? 'won' : 'playing' }
+}
+
+const MARK_ORDER: ReadonlyArray<Primary | null> = [null, 'red', 'yellow', 'blue']
+
+export function cycleMark(state: GameState, key: string): GameState {
+  const cell = state.board.get(key)
+  if (state.status !== 'playing' || !cell || cell.revealed) return state
+
+  const next = MARK_ORDER[(MARK_ORDER.indexOf(cell.mark) + 1) % MARK_ORDER.length]
+  const board = new Map(state.board)
+  board.set(key, { ...cell, mark: next })
+  return { board, status: checkWin(board) ? 'won' : 'playing' }
+}
