@@ -1,5 +1,4 @@
 export type Primary = 'red' | 'yellow' | 'blue'
-
 export type MixColor = Primary | 'orange' | 'purple' | 'green' | 'brown'
 
 export interface Cell {
