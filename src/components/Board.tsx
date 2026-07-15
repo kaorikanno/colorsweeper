@@ -11,10 +11,22 @@ interface BoardProps {
   radius: number
   highlightedKeys: Set<string>
   onReveal: (key: string) => void
-  onSecondaryClick: (key: string) => void
+  onMark: (key: string) => void
+  onChordStart: (key: string) => void
+  onChordEnd: (key: string) => void
+  onChordCancel: () => void
 }
 
-export function Board({ game, radius, highlightedKeys, onReveal, onSecondaryClick }: BoardProps) {
+export function Board({
+  game,
+  radius,
+  highlightedKeys,
+  onReveal,
+  onMark,
+  onChordStart,
+  onChordEnd,
+  onChordCancel,
+}: BoardProps) {
   const margin = HEX_SIZE
   const halfWidth = SQRT3 * HEX_SIZE * (radius + 0.5) + margin
   const halfHeight = 1.5 * HEX_SIZE * radius + HEX_SIZE + margin
@@ -43,7 +55,10 @@ export function Board({ game, radius, highlightedKeys, onReveal, onSecondaryClic
             y={y}
             size={HEX_SIZE}
             onReveal={() => onReveal(key)}
-            onSecondaryClick={() => onSecondaryClick(key)}
+            onMark={() => onMark(key)}
+            onChordStart={() => onChordStart(key)}
+            onChordEnd={() => onChordEnd(key)}
+            onChordCancel={onChordCancel}
           />
         )
       })}

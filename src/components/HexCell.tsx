@@ -11,16 +11,43 @@ interface HexCellProps {
   y: number
   size: number
   onReveal: () => void
-  onSecondaryClick: () => void
+  onMark: () => void
+  onChordStart: () => void
+  onChordEnd: () => void
+  onChordCancel: () => void
 }
 
-export function HexCell({ cell, status, overlay, highlighted, x, y, size, onReveal, onSecondaryClick }: HexCellProps) {
+export function HexCell({
+  cell,
+  status,
+  overlay,
+  highlighted,
+  x,
+  y,
+  size,
+  onReveal,
+  onMark,
+  onChordStart,
+  onChordEnd,
+  onChordCancel,
+}: HexCellProps) {
   const points = hexPoints(x, y, size * 0.94)
   const showMineAtGameEnd = status !== 'playing' && cell.isMine
 
-  const handleContextMenu = (e: React.MouseEvent) => {
+  const handleMark = (e: React.MouseEvent) => {
     e.preventDefault()
-    onSecondaryClick()
+    onMark()
+  }
+
+  const handleChordDown = (e: React.MouseEvent) => {
+    if (e.button !== 2) return
+    e.preventDefault()
+    onChordStart()
+  }
+
+  const handleChordUp = (e: React.MouseEvent) => {
+    if (e.button !== 2) return
+    onChordEnd()
   }
 
   if (cell.revealed && cell.isMine) {
@@ -34,7 +61,13 @@ export function HexCell({ cell, status, overlay, highlighted, x, y, size, onReve
 
   if (cell.revealed) {
     return (
-      <g className="cell revealed" onContextMenu={handleContextMenu}>
+      <g
+        className="cell revealed"
+        onContextMenu={(e) => e.preventDefault()}
+        onMouseDown={handleChordDown}
+        onMouseUp={handleChordUp}
+        onMouseLeave={onChordCancel}
+      >
         <polygon points={points} className="revealed-base" />
         {overlay && <polygon points={points} fill={COLOR_HEX[overlay.color]} fillOpacity={overlay.opacity} />}
       </g>
@@ -54,7 +87,7 @@ export function HexCell({ cell, status, overlay, highlighted, x, y, size, onReve
     <g
       className={`cell covered${status === 'playing' ? ' interactive' : ''}`}
       onClick={onReveal}
-      onContextMenu={handleContextMenu}
+      onContextMenu={handleMark}
     >
       <polygon points={points} className="covered-base" />
       {highlighted && <polygon points={hexPoints(x, y, size * 0.72)} className="highlight-ring" />}

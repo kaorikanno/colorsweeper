@@ -31,27 +31,30 @@ export default function App() {
     setGame((g) => reveal(g, key))
   }
 
-  const handleSecondaryClick = (key: string) => {
-    setHighlightedKeys(new Set())
+  const handleMark = (key: string) => {
     if (game.status !== 'playing') return
-
-    const cell = game.board.get(key)
-    if (!cell) return
-
-    if (cell.revealed && !cell.isMine) {
-      if (canChord(game.board, cell)) {
-        setGame((g) => chordReveal(g, key))
-      } else {
-        const covered = adjacentCells(game.board, cell)
-          .filter((n) => !n.revealed && !n.mark)
-          .map((n) => keyOf(n.q, n.r))
-        setHighlightedKeys(new Set(covered))
-      }
-      return
-    }
-
     setGame((g) => cycleMark(g, key))
   }
+
+  const handleChordStart = (key: string) => {
+    if (game.status !== 'playing') return
+    const cell = game.board.get(key)
+    if (!cell || !cell.revealed || cell.isMine) return
+    const covered = adjacentCells(game.board, cell)
+      .filter((n) => !n.revealed && !n.mark)
+      .map((n) => keyOf(n.q, n.r))
+    setHighlightedKeys(new Set(covered))
+  }
+
+  const handleChordEnd = (key: string) => {
+    setHighlightedKeys(new Set())
+    if (game.status !== 'playing') return
+    const cell = game.board.get(key)
+    if (!cell || !cell.revealed || cell.isMine) return
+    if (canChord(game.board, cell)) setGame((g) => chordReveal(g, key))
+  }
+
+  const handleChordCancel = () => setHighlightedKeys(new Set())
 
   const handleRadiusChange = (r: number) => {
     setRadius(r)
@@ -125,7 +128,10 @@ export default function App() {
           radius={radius}
           highlightedKeys={highlightedKeys}
           onReveal={handleReveal}
-          onSecondaryClick={handleSecondaryClick}
+          onMark={handleMark}
+          onChordStart={handleChordStart}
+          onChordEnd={handleChordEnd}
+          onChordCancel={handleChordCancel}
         />
         {game.status !== 'playing' && (
           <div className={`banner ${game.status}`}>
