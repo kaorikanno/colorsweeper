@@ -102,10 +102,16 @@ export function adjacentCells(board: Board, cell: Cell): Cell[] {
   return cells
 }
 
+/**
+ * A chord is allowed once the number of marks around a cell reaches its
+ * adjacent mine count, regardless of whether those marks are on the actual
+ * mines — so mis-marking and chording can detonate a real mine.
+ */
 export function canChord(board: Board, cell: Cell): boolean {
-  return adjacentCells(board, cell)
-    .filter((n) => n.isMine)
-    .every((n) => n.mark !== null)
+  const adjacent = adjacentCells(board, cell)
+  const mineCount = adjacent.filter((n) => n.isMine).length
+  const markCount = adjacent.filter((n) => n.mark !== null).length
+  return markCount >= mineCount
 }
 
 const SECONDARY: Record<string, MixColor> = {
@@ -172,9 +178,9 @@ export function reveal(state: GameState, key: string): GameState {
 }
 
 /**
- * Reveals every neighbor of an already-revealed safe cell, but only when all of
- * its adjacent mines are marked. Safe by construction: with every adjacent mine
- * marked, each unmarked neighbor is guaranteed not to be a mine.
+ * Reveals every unmarked neighbor of an already-revealed safe cell once its
+ * adjacent mine count is matched by marks (see `canChord`). Marks aren't
+ * validated against real mines, so a wrong guess can reveal — and detonate — a mine.
  */
 export function chordReveal(state: GameState, cellKey: string): GameState {
   const cell = state.board.get(cellKey)

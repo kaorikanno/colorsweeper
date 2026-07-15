@@ -41,7 +41,7 @@ export default function App() {
     const cell = game.board.get(key)
     if (!cell || !cell.revealed || cell.isMine) return
     const covered = adjacentCells(game.board, cell)
-      .filter((n) => !n.revealed && !n.mark)
+      .filter((n) => !n.revealed)
       .map((n) => keyOf(n.q, n.r))
     setHighlightedKeys(new Set(covered))
   }
